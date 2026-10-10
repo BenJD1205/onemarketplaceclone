@@ -1,0 +1,14 @@
+import "dotenv/config";
+
+const parsePort = (value: string | undefined): number => {
+  const port = Number(value ?? 4000);
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    throw new Error("PORT must be a valid integer between 0 and 65535");
+  }
+  return port;
+};
+
+export const env = {
+    port: parsePort(process.env.PORT),
+    nodeEnv: process.env.NODE_ENV ?? "development"
+};
