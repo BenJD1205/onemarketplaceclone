@@ -1,5 +1,6 @@
 import {Server} from "node:http";
 import { env } from "./config/env.js";
+import { connectRedis, disconnectRedis } from "./config/redis.js";
 import { SERVICE_NAME } from "./config/constants.js";
 
 let server: Server | undefined;
@@ -20,6 +21,7 @@ const closeHttpServer = async (): Promise<void> => {
 };
 
 const start = async (): Promise<void> => {
+    await connectRedis();
     server = new Server((req, res) => {
         res.statusCode = 200;
         res.setHeader('Content-Type', 'text/plain');
@@ -38,6 +40,7 @@ const shutdown = async (signal: NodeJS.Signals): Promise<void> => {
     console.log(`Received ${signal}. Shutting down gracefully...`);
     try {
         await closeHttpServer();
+        await disconnectRedis();
         console.log("HTTP server closed successfully.");
         process.exit(0);
     } catch (err) {
@@ -51,5 +54,6 @@ process.on("SIGTERM", (signal) => shutdown(signal));
 
 void start().catch(async (err) => {
     console.error(`Error occurred while starting the server ${SERVICE_NAME}`, err);
+    await disconnectRedis().catch(() => undefined);
     process.exit(1);
 });

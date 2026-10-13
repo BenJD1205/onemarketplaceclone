@@ -1,0 +1,51 @@
+services:
+  redis: 
+    image: "redis:7-alpine"
+    container_name: "one-marketplace-redis"
+    restart: unless-stopped
+
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-onemarketplace}
+
+    ports:
+      - "127.0.0.1:6379:6379"
+
+    volumes:
+      - "redis-data:/data"
+
+    command: 
+      - sh
+      - -c
+      - > 
+        exec redis-server
+        --requirepass "$${REDIS_PASSWORD}"
+        --appendonly yes
+        --maxmemory 1gb
+        --maxmemory-policy allkeys-lru
+
+    healthcheck:
+      test: ["CMD-SHELL", 'redis-cli -a "$${REDIS_PASSWORD}" ping | grep PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nats: 
+    image: "nats:2-alpine"
+    container_name: "one-marketplace-nats"
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:4222:4222"
+      - "127.0.0.1:8222:8222"
+
+    volumes:
+      - "nats-data:/data/jetstream"
+
+    command:
+      - "--jetstream"
+      - "--store_dir=/data/jetstream"
+      - "--http_port=8222"
+
+volumes:
+  redis-data:
+  nats-data:

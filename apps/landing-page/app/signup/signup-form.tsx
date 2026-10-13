@@ -77,8 +77,8 @@ export function SignupForm({ role }: Readonly<SignupFormProps>) {
     }
     const formData = new FormData(event.currentTarget);
     const emailAddress = String(formData.get("email"));
-    try{
-      const {error} = await signUp.password({
+    try {
+      const { error } = await signUp.password({
         emailAddress,
         password: String(formData.get("password")),
         firstName: String(formData.get("firstName")),
@@ -90,18 +90,18 @@ export function SignupForm({ role }: Readonly<SignupFormProps>) {
         },
       });
       if (error) throw error;
-  
-      if(signUp.status === "complete") {
+
+      if (signUp.status === "complete") {
         await redirectWithSessionToken();
         return;
       }
 
       const verification = await signUp.verifications.sendEmailCode();
-      if(verification.error) throw verification.error;
+      if (verification.error) throw verification.error;
       setPendingEmail(emailAddress);
       setIsVerifying(true);
       setStatus("We sent a six-digit verification code to your email.");
-    }catch(error){
+    } catch (error) {
       setIsError(true);
       setStatus(getErrorMessage(error));
     }
@@ -111,7 +111,7 @@ export function SignupForm({ role }: Readonly<SignupFormProps>) {
     setStatus("");
     setIsError(false);
 
-    if(!signUp) {
+    if (!signUp) {
       setIsError(true);
       setStatus(
         "Authentication service is not available at the moment. Please try again later.",
@@ -119,16 +119,16 @@ export function SignupForm({ role }: Readonly<SignupFormProps>) {
       return;
     }
 
-    try{
-      const {error} = await signUp.sso({
-        strategy: provider === 'Google' ? 'oauth_google' : 'oauth_github',
+    try {
+      const { error } = await signUp.sso({
+        strategy: provider === "Google" ? "oauth_google" : "oauth_github",
         redirectUrl: `/auth/complete?role=${encodeURIComponent(role)}`,
         redirectCallbackUrl: `/signup?role=${encodeURIComponent(role)}`,
-        unsafeMetadata: { role }
+        unsafeMetadata: { role },
       });
 
-      if(error) throw error;
-    }catch(error){
+      if (error) throw error;
+    } catch (error) {
       setIsError(true);
       setStatus(getErrorMessage(error));
     }
@@ -139,7 +139,7 @@ export function SignupForm({ role }: Readonly<SignupFormProps>) {
     setStatus("");
     setIsError(false);
 
-    if(!signUp) {
+    if (!signUp) {
       setIsError(true);
       setStatus(
         "Authentication service is not available at the moment. Please try again later.",
@@ -150,18 +150,20 @@ export function SignupForm({ role }: Readonly<SignupFormProps>) {
     const formData = new FormData(event.currentTarget);
     const verificationCode = String(formData.get("verificationCode"));
 
-    try{
-      const {error} = await signUp.verifications.verifyEmailCode({
+    try {
+      const { error } = await signUp.verifications.verifyEmailCode({
         code: verificationCode,
       });
-      if(error) throw error;
+      if (error) throw error;
 
-      if(signUp.status !== "complete") {
-        throw new Error("Your email verification failed, but signup is not complete. Please try again.");
+      if (signUp.status !== "complete") {
+        throw new Error(
+          "Your email verification failed, but signup is not complete. Please try again.",
+        );
       }
 
       await redirectWithSessionToken();
-    }catch(error){
+    } catch (error) {
       setIsError(true);
       setStatus(getErrorMessage(error));
     }
@@ -170,25 +172,25 @@ export function SignupForm({ role }: Readonly<SignupFormProps>) {
   async function resendVerification() {
     setStatus("");
     setIsError(false);
-    if(!signUp) {
+    if (!signUp) {
       return;
     }
 
-    try{
-      const {error} = await signUp.verifications.sendEmailCode();
-      if(error) {
+    try {
+      const { error } = await signUp.verifications.sendEmailCode();
+      if (error) {
         setIsError(true);
         setStatus(getErrorMessage(error));
         return;
       }
       setStatus("A new verification code has been sent to your email.");
-    }catch(error){
+    } catch (error) {
       setIsError(true);
       setStatus(getErrorMessage(error));
     }
   }
 
-  if(!isVerifying) {
+  if (isVerifying) {
     return (
       <div className="w-full max-w-md text-left">
         <button
@@ -199,13 +201,69 @@ export function SignupForm({ role }: Readonly<SignupFormProps>) {
             setVerificationCode("");
             setStatus("");
           }}
-          className="mb-8 inline-flex cursor-pointer items-center gap-2 text-sm font-semibold text-[#5e625c] transition hover:text-[#252724]" 
+          className="mb-8 inline-flex cursor-pointer items-center gap-2 text-sm font-semibold text-[#5e625c] transition hover:text-[#252724]"
         >
           <span aria-hidden="true">←</span>
           Back to account details
         </button>
+        <div className="text-center">
+          <span className="inline-flex rounded-full bg-[#e9f4e6] px-3 py-1.5 text-xs font-semibold text-[#4f754d]">
+            Verify your email
+          </span>
+          <h1 className={`${styles.formTitle} mt-4 text-[#171916]`}>
+            Check your inbox
+          </h1>
+          <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-[#72766f]">
+            Enter the six-digit code sent to{" "}
+            <span className="font-semibold text-[#30332f]">{pendingEmail}</span>
+            .
+          </p>
+        </div>
+        <form onSubmit={handleVerification} className="mt-8 space-y-5">
+          <label className="grid gap-2 text-sm font-semibold text-[#30332f]">
+            Verification code
+            <input
+              type="text"
+              value={verificationCode}
+              onChange={(e) =>
+                setVerificationCode(e.target.value.replace(/\D/g, ""))
+              }
+              placeholder="000000"
+              required
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              autoFocus
+              minLength={6}
+              maxLength={6}
+              className="h-12 rounded-xl border border-black/13 bg-white px-4 text-center font-mono text-lg tracking-[0.35em] outline-none transition placeholder:text-[#a2a59f] focus:border-[#5d8b59] focus:ring-3 focus:ring-[#dcebd9]"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={isLoading || verificationCode.length !== 6}
+            className="h-12 w-full cursor-pointer rounded-xl bg-[#252724] text-sm font-semibold text-white shadow-sm transition hover:bg-[#3b3e39] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isLoading ? "Verifying..." : "Verify and continue"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void resendVerification()}
+            disabled={isLoading || verificationCode.length !== 6}
+            className="w-full cursor-pointer rounded-xl text-sm font-semibold text-[#497446] disabled:opacity-50"
+          >
+             Send a new verification code
+          </button>
+          {status && (
+            <p
+              className={`rounded-xl px-4 py-3 text-center text-xs font-medium ${isError ? "bg-[#fff0ee] text-[#9a4d45]" : "bg-[#edf5eb] text-[#4e704b]"}`}
+              role={isError ? "alert" : "status"}
+            >
+              {status}
+            </p>
+          )}
+        </form>
       </div>
-    )
+    );
   }
 
   return (
